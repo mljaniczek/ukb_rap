@@ -1,0 +1,111 @@
+---
+title: "sensitivity analyses"
+output: html_document
+date: "2025-02-27"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(gtsummary)
+library(stringr)
+library(purrr)
+library(broom)
+library(gt)
+source("labellist.R")
+theme_gtsummary_compact()
+```
+
+```{r}
+validated_mets_details <- read.csv("validated_unique_mets_m3_details_jan2024.csv")
+```
+
+```{r}
+load("data_metabolites.Rdata")
+
+load("analysis_variable_keys.Rdata")
+
+load("processed_pheno.Rdata")
+
+
+# new as of 1/22 adding age as continuous variable among age strata
+```
+
+```{r}
+
+# fun tion to strip the fat of lms
+
+
+
+met_long3 <- dat_phase1 %>%
+  dplyr::select(eid, age_cat,age = age_when_attended_assessment_centre_f21003_0_0, race, SMOKING, menopause_cat, sex = sex_f31_0_0, all_of(met_key$col.name), BMI) %>%
+  pivot_longer(-c(eid, age_cat, age, race, SMOKING, menopause_cat, sex, BMI), names_to = "metabolite", values_to = "value")
+
+```
+
+
+```{r}
+
+# data should be in long format using just data from the phase you are looking at. 
+# run analysis separately in discovery and replication.
+
+model_3 <- function(data){
+  # model those under 59 first bc need to include menopause variable
+    long_test_5 <- data %>%
+      filter(age_cat %in% c("<50", "50-59")) %>%
+      drop_na()%>% 
+      nest(.by = c(age_cat, metabolite)) %>%
+      mutate(model2 = map(data, ~lm(value ~ sex + menopause_cat + age + SMOKING + race + BMI, data = .x)),
+             tidied2 = map(model2, ~tidy(.x, conf.int = T)))%>%
+      dplyr::select(-data)
+    
+    #then model the 60+ group
+    long_test_6 <- met_long3 %>%
+      filter(age_cat %in% c("60+")) %>%
+      drop_na() %>%
+      nest(.by = c(age_cat, metabolite)) %>%
+      # set up both outcome model (model_y) and mediator model (model_m)
+      mutate(model2 = map(data, ~lm(value ~ sex +age + SMOKING + race + BMI, data = .x,
+                                     x = FALSE, y = FALSE, model = FALSE)),
+             tidied2 = map(model2, ~tidy(.x, conf.int = T))) %>%
+      dplyr::select(-data)
+    
+    res_lt50_to_59_M3 <- long_test_5 %>% dplyr::select(metabolite, age_cat, tidied2) %>%
+      unnest(tidied2) %>%
+      filter(term == "sex.L")
+    
+    res_60_to_85_M3 <- long_test_6 %>% dplyr::select(metabolite, age_cat, tidied2) %>%
+      unnest(tidied2) %>%
+      filter(term == "sex.L")
+    
+    all_strat_M3 <- bind_rows(res_lt50_to_59_M3, res_60_to_85_M3) %>%
+      mutate(fdr = p.adjust(p.value, "fdr"),
+             phase = "Phase I",
+             met_threshold_m3 = fdr < 0.05 & abs(estimate)>0.5) 
+    all_strat_M3
+}
+
+subset_M3 <- all_strat_M3 %>%
+      filter(fdr < 0.05 & abs(estimate)>.5) %>%
+      mutate(phase = "Phase I",
+             phase_mod = "Phase I M3")
+    
+```
+
+1. Exclude subjects on oral contraceptives or HRT
+
+```{r}
+dat_phase1_no_ochrt <- dat_metab_sub %>%
+  filter(metabolite_status == "Phase 1") %>%
+  filter('Oral contraceptive pill or minipill' == 0) %>%
+  filter('Hormone replacement theraphy' == 0) %>%
+  left_join(metabs) %>%
+  group_by(age_cat) %>% # new as of 1/27
+  # doing center scaling so we can compare estimates?
+  mutate(across(
+    all_of(met_key$col.name),scale)
+  ) %>%
+  ungroup()
+```
+

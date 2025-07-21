@@ -1,0 +1,435 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-11-12"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(dplyr)
+library(tidyr)
+library(gtsummary)
+library(stringr)
+library(purrr)
+library(broom)
+library(gt)
+library(ggplot2)
+
+source("labellist.R")
+theme_gtsummary_compact()
+```
+
+
+```{r}
+validated_mets_details <- read.csv("validated_unique_mets_m3_details_jan2024.csv")
+```
+
+```{r}
+load("data_metabolites.Rdata")
+
+load("analysis_variable_keys.Rdata")
+
+load("processed_pheno.Rdata")
+
+
+# new as of 1/22 adding age as continuous variable among age strata
+
+```
+
+
+
+```{r}
+
+test <- dat_metab_sub %>%
+  filter(metabolite_status == "Phase 1") %>%
+  filter(prevalent_cad == 0) %>%
+  dplyr::select(incident_cad, age = age_when_attended_assessment_centre_f21003_0_0, age_cat, sex_f31_0_0, SMOKING, BMI, SBP, `Cholesterol lowering medication`) %>%
+  tbl_strata(
+    strata = age_cat,
+    .tbl_fun =
+      ~ .x %>%
+        tbl_summary(by = sex_f31_0_0) %>%
+        add_n(),
+    .header = "**{strata}**, N = {n}"
+  )
+
+test 
+# 
+# tbl_summary(dat_metab_sub %>% dplyr::select(prevalent_cad, incident_cad, metabolite_status), by = metabolite_status) %>%
+#   add_overall()
+```
+
+
+```{r}
+disease_dat <- dat_metab_sub %>%
+  left_join(metabs %>% dplyr::select(eid, all_of(validated_mets_details$metabolite))) %>% 
+  filter(metabolite_status %in% c("Phase 1", "Phase 2") )%>%
+  #exclude prevalent cad
+  filter(prevalent_cad != 1) %>%
+  #new 1/2024 doing separate for phase 1 and phase 2
+  dplyr::select(eid, age_cat, age =age_when_attended_assessment_centre_f21003_0_0, SMOKING, SBP, TC, HDL, menopause_cat, sex = sex_f31_0_0, incident_cad, incident_stroke, prevalent_diabetes_t2, hrt = `Hormone replacement therapy`, race, bp_med = `Blood pressure medication`, metabolite_status, all_of(validated_mets_details$metabolite)) %>%
+group_by(metabolite_status, age_cat) %>%
+    mutate(across(
+    all_of(validated_mets_details$metabolite),scale)
+  ) %>%
+  ungroup()
+
+disease_dat_all <- dat_metab_sub %>%
+  left_join(metabs %>% dplyr::select(eid, all_of(met_key$col.name))) %>% 
+  filter(metabolite_status %in% c("Phase 1", "Phase 2") )%>%
+  #exclude prevalent cad
+  filter(prevalent_cad != 1) %>%
+  #new 1/2024 doing separate for phase 1 and phase 2
+  dplyr::select(eid, age_cat, age =age_when_attended_assessment_centre_f21003_0_0, SMOKING, SBP, TC, HDL, menopause_cat, sex = sex_f31_0_0, incident_cad, incident_stroke, prevalent_diabetes_t2, hrt = `Hormone replacement therapy`, race, bp_med = `Blood pressure medication`, metabolite_status, all_of(met_key$col.name)) %>%
+group_by(metabolite_status, age_cat) %>%
+    mutate(across(
+    all_of(met_key$col.name),scale)
+  ) %>%
+  ungroup()
+
+# depending on whether you want to use validated mets or all, do the below:
+met_long_valid  <- disease_dat %>%
+  pivot_longer(-c(eid, age_cat, age, menopause_cat, sex, SBP, TC, HDL, race, incident_cad, SMOKING, bp_med, incident_stroke, prevalent_diabetes_t2, hrt, metabolite_status), names_to = "metabolite", values_to = "value")
+
+# test <- met_long_valid %>%
+#   filter(age_cat == "<50", metabolite == "apolipoprotein_a1_f23440_0_0", sex == "Female")
+# 
+# mod_test <- glm(incident_cad ~ value + age + smoker + sbp + bp_med , family = binomial, data = test)
+# 
+# mod_test_tidy <- tidy(mod_test, conf.int = T, exponentiate = TRUE)
+
+```
+
+```{r}
+# calculate correlation between validated mets and TC/HDL
+
+corr_w_chol <- disease_dat %>%
+      dplyr::select(apolipoprotein_a1_f23440_0_0:triglycerides_to_phosphoglycerides_ratio_f23435_0_0, TC, HDL) %>% 
+  correlate() %>% 
+  focus(TC, HDL) 
+
+corr_mat <- as.matrix(corr_w_chol[,-1])
+rownames(corr_mat) <- corr_w_chol$term
+library(pheatmap)
+pheatmap(corr_mat)
+```
+
+
+```{r phase1cadmods}
+# phase 1 models 
+
+
+
+long_test_1_f <- met_long_valid %>%
+  filter(age_cat %in% c("<50") & metabolite_status == "Phase 1") %>%
+  nest(.by = c( age_cat, metabolite, sex)) %>%
+  mutate(model = map(data, ~glm(incident_cad ~ value + age + SMOKING + bp_med + SBP +  prevalent_diabetes_t2, family = binomial, data = .x))) %>%
+        mutate(tidied = map(model, ~tidy(.x, conf.int = T, exponentiate = TRUE))) %>%
+  dplyr::select(-data)
+
+test <- long_test_1_f$tidied
+
+res_lt50 <- long_test_1_f %>% dplyr::select(metabolite, age_cat, sex, tidied) %>%
+  unnest(tidied)%>%
+  filter(term == "value") 
+
+res_f_1 <- res_lt50 %>%
+  dplyr::select(metabolite, age_cat, sex, estimate, conf.low, conf.high) %>%
+  pivot_wider(names_from = sex, names_glue = "{.value}_{sex}", values_from = c(estimate, conf.low, conf.high)) %>%
+  mutate(conf_doesnt_overlap = ifelse(
+    conf.low_Male>conf.high_Female | conf.low_Female > conf.high_Male, 1, 0
+  ))
+
+long_test_2_f <- met_long_valid %>%
+  filter(age_cat %in% c("50-59")& metabolite_status == "Phase 1") %>%
+  nest(.by = c( age_cat, metabolite, sex)) %>%
+  mutate(model = map(data, ~glm(incident_cad ~ value + age + SMOKING + bp_med + SBP +  prevalent_diabetes_t2, family = binomial, data = .x))) %>%
+        mutate(tidied = map(model, ~tidy(.x, conf.int = T, exponentiate = TRUE))) %>%
+  dplyr::select(-data)
+
+res_lt_59_f <- long_test_2_f %>% dplyr::select(metabolite, age_cat, sex, tidied) %>%
+  unnest(tidied)%>%
+  filter(term == "value") 
+
+res_f_2 <- res_lt_59_f %>%
+  dplyr::select(metabolite, age_cat, sex, estimate, conf.low, conf.high) %>%
+  pivot_wider(names_from = sex, names_glue = "{.value}_{sex}", values_from = c(estimate, conf.low, conf.high)) %>%
+  mutate(conf_doesnt_overlap = ifelse(
+    conf.low_Male>conf.high_Female | conf.low_Female > conf.high_Male, 1, 0
+  ))
+
+long_test_3_f <- met_long_valid %>%
+  filter(age_cat %in% c("60+")& metabolite_status == "Phase 1") %>%
+  nest(.by = c( age_cat, metabolite, sex)) %>%
+  mutate(model = map(data, ~glm(incident_cad ~ value + age + SMOKING + bp_med + SBP +  prevalent_diabetes_t2, family = binomial, data = .x))) %>%
+        mutate(tidied = map(model, ~tidy(.x, conf.int = T, exponentiate = TRUE))) %>%
+  dplyr::select(-data)
+
+
+res_lt_69_f <- long_test_3_f %>% dplyr::select(metabolite, age_cat, sex, tidied) %>%
+  unnest(tidied)%>%
+  filter(term == "value") 
+
+res_f_3 <- res_lt_69_f %>%
+  dplyr::select(metabolite, age_cat, sex, estimate, conf.low, conf.high) %>%
+  pivot_wider(names_from = sex, names_glue = "{.value}_{sex}", values_from = c(estimate, conf.low, conf.high)) %>%
+  mutate(conf_doesnt_overlap = ifelse(
+    conf.low_Male>conf.high_Female | conf.low_Female > conf.high_Male, 1, 0
+  ))
+
+all_strat_f <- bind_rows(res_lt50, res_lt_59_f, res_lt_69_f)
+
+sig_overlap_cad <- bind_rows(res_f_1, res_f_2, res_f_3) %>%
+  filter(conf_doesnt_overlap == 1)
+
+save(all_strat_f, file = "phase1_outcome_results_cad.Rdata")
+save(sig_overlap_cad, file = "phase1_outcome_results_cad_sig.Rdata")
+
+length(unique(sig_overlap_cad$metabolite))
+
+res_f_1 <- res_f_1 %>%
+  mutate(dif_sex = abs(estimate_Female - estimate_Male)) %>%
+  arrange(desc(dif_sex))
+
+met_interest <- res_f_1 %>% filter(dif_sex > .25)
+
+
+all_strat_f %>%
+  filter(metabolite %in% sig_overlap_cad$metabolite) %>%
+  ggplot(aes(y = metabolite, color = sex)) + 
+  theme_classic() +
+  geom_point(aes(x=estimate), shape=15, size=3) +
+  geom_linerange(aes(xmin=conf.low, xmax=conf.high))+ 
+  facet_grid(~age_cat)
+
+```
+
+```{r phase2cadmods}
+# phase 1 models 
+
+met_valid2 <- met_long_valid %>%
+  filter(metabolite %in% sig_overlap_cad$metabolite)
+
+long_test_1_fp2 <- met_valid2 %>%
+  filter(age_cat %in% c("<50") & metabolite_status == "Phase 2") %>%
+  nest(.by = c( age_cat, metabolite, sex)) %>%
+  mutate(model = map(data, ~glm(incident_cad ~ value + age + SMOKING + SBP + bp_med +  prevalent_diabetes_t2, family = binomial, data = .x))) %>%
+        mutate(tidied = map(model, ~tidy(.x, conf.int = T, exponentiate = TRUE))) %>%
+  dplyr::select(-data)
+
+
+res_lt50p2 <- long_test_1_fp2 %>% dplyr::select(metabolite, age_cat, sex, tidied) %>%
+  unnest(tidied)%>%
+  filter(term == "value") 
+
+res_f_1p2 <- res_lt50p2 %>%
+  dplyr::select(metabolite, age_cat, sex, estimate, conf.low, conf.high) %>%
+  pivot_wider(names_from = sex, names_glue = "{.value}_{sex}", values_from = c(estimate, conf.low, conf.high)) %>%
+  mutate(conf_doesnt_overlap = ifelse(
+    conf.low_Male>conf.high_Female | conf.low_Female > conf.high_Male, 1, 0
+  ))
+
+long_test_2_fp2 <- met_valid2 %>%
+  filter(age_cat %in% c("50-59")& metabolite_status == "Phase 2") %>%
+  nest(.by = c( age_cat, metabolite, sex)) %>%
+  mutate(model = map(data, ~glm(incident_cad ~ value + age + SMOKING + SBP + bp_med +  prevalent_diabetes_t2, family = binomial, data = .x))) %>%
+        mutate(tidied = map(model, ~tidy(.x, conf.int = T, exponentiate = TRUE))) %>%
+  dplyr::select(-data)
+
+res_lt_59_fp2 <- long_test_2_fp2 %>% dplyr::select(metabolite, age_cat, sex, tidied) %>%
+  unnest(tidied)%>%
+  filter(term == "value") 
+
+res_f_2p2 <- res_lt_59_fp2 %>%
+  dplyr::select(metabolite, age_cat, sex, estimate, conf.low, conf.high) %>%
+  pivot_wider(names_from = sex, names_glue = "{.value}_{sex}", values_from = c(estimate, conf.low, conf.high)) %>%
+  mutate(conf_doesnt_overlap = ifelse(
+    conf.low_Male>conf.high_Female | conf.low_Female > conf.high_Male, 1, 0
+  ))
+
+long_test_3_fp2 <- met_valid2 %>%
+  filter(age_cat %in% c("60+")& metabolite_status == "Phase 2") %>%
+  nest(.by = c( age_cat, metabolite, sex)) %>%
+  mutate(model = map(data, ~glm(incident_cad ~ value + age + SMOKING + SBP + bp_med +  prevalent_diabetes_t2, family = binomial, data = .x))) %>%
+        mutate(tidied = map(model, ~tidy(.x, conf.int = T, exponentiate = TRUE))) %>%
+  dplyr::select(-data)
+
+res_lt_69_fp2 <- long_test_3_fp2 %>% dplyr::select(metabolite, age_cat, sex, tidied) %>%
+  unnest(tidied)%>%
+  filter(term == "value") 
+
+res_f_3p2 <- res_lt_69_fp2 %>%
+  dplyr::select(metabolite, age_cat, sex, estimate, conf.low, conf.high) %>%
+  pivot_wider(names_from = sex, names_glue = "{.value}_{sex}", values_from = c(estimate, conf.low, conf.high)) %>%
+  mutate(conf_doesnt_overlap = ifelse(
+    conf.low_Male>conf.high_Female | conf.low_Female > conf.high_Male, 1, 0
+  ))
+
+
+all_strat_fp2 <- bind_rows(res_lt50p2, res_lt_59_fp2, res_lt_69_fp2)
+
+sig_overlap_cadp2 <- bind_rows(res_f_1p2, res_f_2p2, res_f_3p2) %>%
+  filter(conf_doesnt_overlap == 1)
+
+save(all_strat_fp2, file = "phase2_outcome_results_cad.Rdata")
+
+length(unique(sig_overlap_cadp2$metabolite))
+
+res_f_1p2 <- res_f_1p2 %>%
+  mutate(dif_sex = abs(estimate_Female - estimate_Male)) %>%
+  arrange(desc(dif_sex))
+
+met_interestp2 <- res_f_1p2 %>% filter(dif_sex > .25)
+
+```
+
+Now examine how many were validated in phase 2
+
+```{r}
+
+
+sig_valid <- sig_overlap_cad %>%
+  filter(metabolite %in% sig_overlap_cadp2$metabolite) %>%
+  mutate(sig_dif = estimate_Female - estimate_Male)
+
+length(unique(sig_valid$metabolite))
+
+res_sig <- all_strat_f %>%
+  filter(metabolite %in% sig_valid$metabolite) %>%
+  left_join(met_key %>% dplyr::select(metabolite = col.name, title, pathway, met_name))
+
+res_sig_details <- met_key %>%
+  filter(col.name %in% res_sig$metabolite)
+
+tbl_summary(res_sig_details %>% select(pathway))
+
+res_sig %>%
+  ggplot(aes(y = met_name, color = sex)) + 
+  theme_classic() +
+  geom_point(aes(x=estimate), shape=15, size=3) +
+  geom_linerange(aes(xmin=conf.low, xmax=conf.high))+ 
+  facet_grid(~age_cat)
+
+res_sig %>%
+  filter(metabolite %in% validated_mets_details$metabolite) %>%
+  ggplot(aes(y = met_name, color = sex)) + 
+  theme_classic() +
+  geom_point(aes(x=estimate), shape=15, size=3) +
+  geom_linerange(aes(xmin=conf.low, xmax=conf.high))+ 
+  vline(x = 1) + 
+  facet_grid(~age_cat)
+
+res_sig %>%
+  filter(metabolite %in% validated_mets_details$metabolite) %>%
+ggplot(aes(y = met_name, color = sex)) + 
+  theme_classic() +
+  scale_x_continuous(breaks = seq(0,1.5, .5), limits = c(0,2)) +
+  coord_fixed(ratio=.3) +
+  xlab("Odds Ratio") +
+  geom_point(aes(x=estimate), shape=15, size=3) +
+  geom_linerange(aes(xmin=conf.low, xmax=conf.high))+ 
+  geom_vline(xintercept = 1, col = "black", linetype = 2) +
+  facet_grid(~age_cat)
+
+sig_valid <- sig_valid %>%
+  mutate(in_other_valid = metabolite %in% validated_mets_details$metabolite)
+
+save(sig_valid, file = "validated_outcome_results_41mets.Rdata")
+
+
+test <- sig_valid %>%
+  filter(metabolite %in% validated_mets_details$metabolite)
+```
+
+# Sex score as predictor of CAD
+
+```{r}
+# add sex score??
+
+disease_dat_new <- disease_dat %>%
+  left_join(dat_lassores_sub %>% dplyr::select(eid, sex_score_scaled))
+
+mod1 <- glm(incident_cad ~ sex_score_scaled + age + SMOKING + bp_med + SBP + prevalent_diabetes_t2, family = binomial, data = disease_dat_new)
+
+
+long_test_1_score <- disease_dat_new %>%
+  filter(age_cat %in% c("<50") & metabolite_status == "Phase 1") %>%
+  nest(.by = c(age_cat)) %>%
+  mutate(model = map(data, ~glm(incident_cad ~ sex_score_scaled + age + SMOKING + bp_med + SBP +  prevalent_diabetes_t2, family = binomial, data = .x))) %>%
+        mutate(tidied = map(model, ~tidy(.x, conf.int = T, exponentiate = TRUE))) %>%
+  dplyr::select(-data)
+
+test <- long_test_1_f$tidied
+
+res_lt50_score <- long_test_1_score %>% dplyr::select(age_cat, sex, tidied) %>%
+  unnest(tidied)%>%
+  filter(term == "sex_score_scaled") 
+
+res_f_1_score <- res_lt50_score %>%
+  dplyr::select(age_cat, sex, estimate, conf.low, conf.high) %>%
+  pivot_wider(names_from = sex, names_glue = "{.value}_{sex}", values_from = c(estimate, conf.low, conf.high)) %>%
+  mutate(conf_doesnt_overlap = ifelse(
+    conf.low_Male>conf.high_Female | conf.low_Female > conf.high_Male, 1, 0
+  ))
+
+long_test_2_f_score <- disease_dat_new %>%
+  filter(age_cat %in% c("50-59")& metabolite_status == "Phase 1") %>%
+  nest(.by = c( age_cat, sex)) %>%
+  mutate(model = map(data, ~glm(incident_cad ~ sex_score_scaled + age + SMOKING + bp_med + SBP +  prevalent_diabetes_t2, family = binomial, data = .x))) %>%
+        mutate(tidied = map(model, ~tidy(.x, conf.int = T, exponentiate = TRUE))) %>%
+  dplyr::select(-data)
+
+res_lt_59_f_score <- long_test_2_f_score %>% dplyr::select(age_cat, sex, tidied) %>%
+  unnest(tidied)%>%
+  filter(term == "sex_score_scaled") 
+
+res_f_2_score <- res_lt_59_f_score %>%
+  dplyr::select(age_cat, sex, estimate, conf.low, conf.high) %>%
+  pivot_wider(names_from = sex, names_glue = "{.value}_{sex}", values_from = c(estimate, conf.low, conf.high)) %>%
+  mutate(conf_doesnt_overlap = ifelse(
+    conf.low_Male>conf.high_Female | conf.low_Female > conf.high_Male, 1, 0
+  ))
+
+long_test_3_f_score <- disease_dat_new %>%
+  filter(age_cat %in% c("60+")& metabolite_status == "Phase 1") %>%
+  nest(.by = c( age_cat, sex)) %>%
+  mutate(model = map(data, ~glm(incident_cad ~ sex_score_scaled + age + SMOKING + bp_med + SBP +  prevalent_diabetes_t2, family = binomial, data = .x))) %>%
+        mutate(tidied = map(model, ~tidy(.x, conf.int = T, exponentiate = TRUE))) %>%
+  dplyr::select(-data)
+
+
+res_lt_69_f_score <- long_test_3_f_score %>% dplyr::select(age_cat, sex, tidied) %>%
+  unnest(tidied)%>%
+  filter(term == "sex_score_scaled") 
+
+res_f_3_score <- res_lt_69_f_score %>%
+  dplyr::select(age_cat, sex, estimate, conf.low, conf.high) %>%
+  pivot_wider(names_from = sex, names_glue = "{.value}_{sex}", values_from = c(estimate, conf.low, conf.high)) %>%
+  mutate(conf_doesnt_overlap = ifelse(
+    conf.low_Male>conf.high_Female | conf.low_Female > conf.high_Male, 1, 0
+  ))
+
+all_strat_f_score <- bind_rows(res_lt50_score, res_lt_59_f_score, res_lt_69_f_score)
+
+sig_overlap_cad_score <- bind_rows(res_f_1_score, res_f_2_score, res_f_3_score) %>%
+  filter(conf_doesnt_overlap == 1)
+
+
+
+res_f_1 <- res_f_1 %>%
+  mutate(dif_sex = abs(estimate_Female - estimate_Male)) %>%
+  arrange(desc(dif_sex))
+
+met_interest <- res_f_1 %>% filter(dif_sex > .25)
+
+
+all_strat_f %>%
+  filter(metabolite %in% sig_overlap_cad$metabolite) %>%
+  ggplot(aes(y = metabolite, color = sex)) + 
+  theme_classic() +
+  geom_point(aes(x=estimate), shape=15, size=3) +
+  geom_linerange(aes(xmin=conf.low, xmax=conf.high))+ 
+  facet_grid(~age_cat)
+```
+
+

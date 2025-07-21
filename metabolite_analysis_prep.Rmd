@@ -1,0 +1,140 @@
+---
+title: "Metabolite exploration"
+output: html_document
+date: "2023-08-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(dplyr)
+library(tidyr)
+library(gtsummary)
+library(ggplot2)
+```
+
+First loaded 
+
+```{r}
+
+# load prepared ukb keys
+ukb_key_metab <- ukb_df_field("ukb673788", path = "/rawdata/UKBB/Metabolomics_jul2023")
+# read in metabolite categories
+
+metab_cat <- read.table("Nightingale_biomarker_groups.txt", fill = T, sep = "\t",
+                        header = T) %>%
+  mutate(field.showcase = as.character(field_id)) %>%
+  select(-field_id)
+
+# join with metab key
+metab_key2 <- ukb_key_metab%>%
+  left_join(metab_cat) %>%
+  filter(!str_detect(col.name, "qc_flag")) %>%
+  filter(field.showcase %in% 23400:24000) %>%
+  filter(col.type == "Continuous") %>% #don't want the timing or wellplate variables
+  filter(str_detect(field.tab, ".0.0")) #just want first assessment
+
+metab_key2 %>%
+  select(Group) %>%
+  tbl_summary()
+```
+
+```{r}
+# load prepared pheno + metab dataset
+load("/rawdata/UKBB/Metabolomics_jul2023/dat_subset_metab.Rdata")
+
+# subset to just metabs  
+
+load("/rawdata/UKBB/Metabolomics_Apr2023/ukb_pts_w_metabolites_phase1.Rdata")
+load("/rawdata/UKBB/Metabolomics_jul2023/ukb_pts_w_metabolites_phase2.Rdata")
+
+#whittle down to metabolite data
+metab_sub <- dat_sub_metab2 %>%
+  select(eid, metabolite_status, all_of(metab_key2$col.name)) %>%
+  filter(!is.na(metabolite_status))
+
+```
+Get percent of non-NA metabolites
+
+```{r}
+# do phase 1 data
+
+# grab just metabolites from phase I data
+metab1 <- dat_sub_metab2 %>%
+  filter(metabolite_status == "Phase 1") %>%
+  select(eid, all_of(metab_key2$col.name))
+
+# now grab just metabolites, not id
+metab <- metab1 %>% select(-eid)
+zero_met <- metab
+# make all measured metabolites a 1 
+
+zero_met[zero_met > 0] <- 1
+
+id <- metab1$eid
+
+# move to long format
+met_zero_long <- zero_met %>%
+  mutate(
+    eid = id
+  ) %>%
+  pivot_longer(!eid, names_to = "metabolite", values_to = "measured")
+
+summary(met_zero_long$measured)
+
+
+```
+
+```{r}
+library(visdat)
+vis_miss(metab, warn_large_data = FALSE)
+```
+
+
+```{r}
+
+# now make percent measured per metabolite
+
+met_zero_pct <- met_zero_long %>%
+  select(-eid)%>%
+  group_by(metabolite, measured) %>%
+  dplyr::count(metabolite, measured) %>%
+  mutate(total = sum(n), 
+         percentage = n/sum(n),
+         diff = total - n) %>%
+  filter(measured ==1) %>%
+  dplyr::select(-measured)
+
+summary(met_zero_pct$percentage)
+  
+
+```
+
+All metabolites have >99.9% samples with measurements. 
+
+
+```{r eval = FALSE, include = FALSE}
+# try for heatmap
+
+# make long master dataset with scaled metabolites
+
+met_long <- metab %>%
+  mutate(eid = id) %>%
+  pivot_longer(!eid, names_to = "metabolite", values_to = "value") %>%
+  group_by(metabolite) %>%
+  mutate(center_scaled = scale(value, center = TRUE)) %>%
+  ungroup()
+
+met_scale_wide <- met_long %>%
+  select(eid, metabolite, center_scaled) %>%
+  pivot_wider(names_from = metabolite, values_from = center_scaled)
+
+#library(pheatmap)
+
+met_wide_mat <- t(as.matrix(met_scale_wide %>% select(-eid)))
+# takes way too long?
+#pheatmap(met_wide_mat, show_colnames = FALSE, show_rownames = FALSE)
+```
+
+
+
