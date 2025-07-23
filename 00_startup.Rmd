@@ -70,12 +70,27 @@ field_data <- read.delim("field.tsv")
 ```{r}
 head(field_data)
 ```
+## Load in the keys for fields used in analysis on Nightengale
+
+```{r}
+library(dplyr)
+#load("ukb_keys.Rdata") for all pheno data
+
+load("analysis_variable_keys.Rdata")
+
+field_data_select <- field_data %>%
+  filter(field_id %in% c(as.numeric(char_key$field.showcase), as.numeric(met_key$field.showcase), as.numeric(med_key$field.showcase)))
+
+
+length(unique(field_data_select$field_id))
+  
+```
 
 
 ### Writing our file to the RStudio Workspace
 
 ```{r}
-write.csv(field_data2, file="updated_field_data.csv")
+write.csv(field_data_select, file="updated_field_data.csv")
 list.files()
 ```
 
