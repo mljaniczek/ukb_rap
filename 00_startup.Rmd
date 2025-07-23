@@ -1,0 +1,128 @@
+---
+title: "startup"
+author: "Margaret Janiczek"
+date: "2025-07-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Startup: One Time
+
+## Request UKB RAP Access
+
+## Set up project
+
+## Wait for data to be dispensed
+
+
+# Working on Data: To start
+
+## Log in to UKB RAP
+
+## Start Posit Workbench
+
+## Clone GitHub repository of files 
+
+## (Optional) Grab list of field names, modify them
+
+This is useful if you want to just download a subset of the data to work with going forward. 
+
+### List files in current project
+
+We'll need to figure out where our files are in the RAP project storage.
+
+```{r}
+system("dx ls 'Showcase metadata'")
+```
+
+### Load the file using dxFUSE
+
+The first way we can access a file in a project is by prepending a `/mnt/project/` to our file path. This lets us access files in our project. 
+
+```{r}
+field_data2 <- read.delim("/mnt/project/Showcase metadata/field.tsv")
+```
+
+```{r}
+head(field_data2)
+```
+
+### Alternative: download file into Workspace Storage
+
+If we want to be explicit in downloading files, we can utilize `dx download` within `system()` to download our files from the DX Toolkit.
+
+Note that we 
+
+```{r}
+system("dx download '/Showcase metadata/field.tsv'")
+list.files()
+```
+
+### Load the file into R
+
+```{r}
+field_data <- read.delim("field.tsv")
+```
+
+```{r}
+head(field_data)
+```
+
+
+### Writing our file to the RStudio Workspace
+
+```{r}
+write.csv(field_data2, file="updated_field_data.csv")
+list.files()
+```
+
+### Saving Our file back into Project Storage
+
+```{r}
+system("dx upload updated_field_data.csv")
+```
+
+
+## Use Table Exporter to save a .csv file of the data to your Project space
+
+
+## Wrap up
+
+### Commit and push any file changes
+
+
+### Save results back to project folder 
+
+
+### Terminate RStudio session
+
+Be sure to terminate the Posit workbench or it will just keep running (and costing money!!)
+
+# Working on data: subsequent
+
+## Log in to UKB RAP
+
+## (Optional) Use GitHub repository
+
+## (Optional) Connect to GitHub so you can push file changes
+
+## Load in .csv file of data with selected fields
+
+## Run analysis
+
+## Wrap up
+
+### Commit and push any file changes
+
+
+### Save results back to project folder 
+
+
+### Terminate RStudio session
+
+Be sure to terminate the Posit workbench or it will just keep running (and costing money!!)
+
+
