@@ -61,6 +61,30 @@ system("dx download '/Showcase metadata/field.tsv'")
 list.files()
 ```
 
+## Alternative: to get table exporter thing to work??
+
+```{r}
+field_dx <- read.csv("app81009_20240119215747.dataset.data_dictionary.csv")
+
+library(tidyverse)
+
+field_dx <- field_dx %>%
+  mutate(field_mod = name) %>%
+  mutate(field_mod2 = str_split_i(field_mod, "_", 1), 
+         instance = str_split_i(field_mod, "_i", 2),
+         field_mod3 = str_remove(field_mod2, "p"))
+
+field_dx$instance[is.na(field_dx$instance)] <- 0 
+
+field_dx_select <- field_dx %>%
+  filter(instance == 0) %>%
+  filter(field_mod3 %in% c("eid", field_data_select$field_id)) %>%
+ filter(entity == "participant")
+
+write.csv(field_dx_select, file = "please_work.csv")
+```
+
+
 ### Load the file into R
 
 ```{r}
@@ -78,7 +102,7 @@ library(dplyr)
 
 load("analysis_variable_keys.Rdata")
 
-field_data_select <- field_data %>%
+field_data_select <- field_data2 %>%
   filter(field_id %in% c(as.numeric(char_key$field.showcase), as.numeric(met_key$field.showcase), as.numeric(med_key$field.showcase)))
 
 
@@ -92,6 +116,8 @@ length(unique(field_data_select$field_id))
 ```{r}
 write.csv(field_data_select, file="updated_field_data.csv")
 list.files()
+
+
 ```
 
 ### Saving Our file back into Project Storage

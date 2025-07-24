@@ -1,0 +1,36 @@
+entity,entity_title,entity_description,entity_label_plural,entity_label_singular
+participant,Participant,,Participants,Participant
+covid19_result_england,COVID19 Test Result Record (England),,COVID19 Test Result Records (England),COVID19 Test Result Record (England)
+covid19_result_scotland,COVID19 Test Result Record (Scotland),,COVID19 Test Result Records (Scotland),COVID19 Test Result Record (Scotland)
+covid19_result_wales,COVID19 Test Result Record (Wales),,COVID19 Test Result Records (Wales),COVID19 Test Result Record (Wales)
+gp_clinical,GP Clinical Event Record,,GP Clinical Event Records,GP Clinical Event Record
+gp_scripts,GP Prescription Record,,GP Prescription Records,GP Prescription Record
+gp_registrations,GP Registration Record,,GP Registration Records,GP Registration Record
+hesin,Hospitalization Record,,Hospitalization Records,Hospitalization Record
+hesin_diag,Hospital Diagnosis Record,,Hospital Diagnosis Records,Hospital Diagnosis Record
+hesin_oper,Hospital Operation Record,,Hospital Operation Records,Hospital Operation Record
+hesin_critical,Hospital Critical Care Record,,Hospital Critical Care Records,Hospital Critical Care Record
+hesin_maternity,Hospital Maternity Record,,Hospital Maternity Records,Hospital Maternity Record
+hesin_delivery,Hospital Delivery Record,,Hospital Delivery Records,Hospital Delivery Record
+hesin_psych,Hospital Psychiatric Detention Record,,Hospital Psychiatric Detention Records,Hospital Psychiatric Detention Record
+death,Death Record,,Death Records,Death Record
+death_cause,Death Cause Record,,Death Cause Records,Death Cause Record
+omop_death,omop_death,omop_death,omop_death,omop_death
+omop_device_exposure,omop_device_exposure,omop_device_exposure,omop_device_exposure,omop_device_exposure
+omop_note,omop_note,omop_note,omop_note,omop_note
+omop_observation,omop_observation,omop_observation,omop_observation,omop_observation
+omop_drug_exposure,omop_drug_exposure,omop_drug_exposure,omop_drug_exposure,omop_drug_exposure
+omop_observation_period,omop_observation_period,omop_observation_period,omop_observation_period,omop_observation_period
+omop_person,omop_person,omop_person,omop_person,omop_person
+omop_procedure_occurrence,omop_procedure_occurrence,omop_procedure_occurrence,omop_procedure_occurrence,omop_procedure_occurrence
+omop_specimen,omop_specimen,omop_specimen,omop_specimen,omop_specimen
+omop_visit_detail,omop_visit_detail,omop_visit_detail,omop_visit_detail,omop_visit_detail
+omop_visit_occurrence,omop_visit_occurrence,omop_visit_occurrence,omop_visit_occurrence,omop_visit_occurrence
+omop_dose_era,omop_dose_era,omop_dose_era,omop_dose_era,omop_dose_era
+omop_drug_era,omop_drug_era,omop_drug_era,omop_drug_era,omop_drug_era
+omop_condition_era,omop_condition_era,omop_condition_era,omop_condition_era,omop_condition_era
+omop_condition_occurrence,omop_condition_occurrence,omop_condition_occurrence,omop_condition_occurrence,omop_condition_occurrence
+omop_measurement,omop_measurement,omop_measurement,omop_measurement,omop_measurement
+olink_instance_0,Olink Instance 0 NPX Result,,Olink Instance 0 NPX Results,Olink Instance 0 NPX Result
+olink_instance_2,Olink Instance 2 NPX Result,,Olink Instance 2 NPX Results,Olink Instance 2 NPX Result
+olink_instance_3,Olink Instance 3 NPX Result,,Olink Instance 3 NPX Results,Olink Instance 3 NPX Result
