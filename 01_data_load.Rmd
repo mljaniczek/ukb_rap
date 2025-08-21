@@ -1,0 +1,15 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-08-21"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+system('dx download data.csv')
+system('dx download first_occurrences.csv')
+```
+
