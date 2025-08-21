@@ -37,7 +37,7 @@ library(tidyr)
 library(dplyr)
 
 event_key <- colnames(fo)[str_detect(colnames(fo), "Source")]
-eventdate_key <- colnames(fo%>% select(-c(Date.of.attending.assessment.centre...Instance.0, Sample.Measured.Date.and.Time...Instance.0)))[str_detect(colnames(fo%>% select(-c(Date.of.attending.assessment.centre...Instance.0, Sample.Measured.Date.and.Time...Instance.0))), "Date")]
+eventdate_key <- colnames(fo%>% select(-c( Sample.Measured.Date.and.Time...Instance.0)))[str_detect(colnames(fo%>% select(-c(Sample.Measured.Date.and.Time...Instance.0))), "Date")]
 
 event <- fo %>%
   select(Participant.ID, all_of(event_key))
@@ -52,9 +52,11 @@ event_long <- event %>%
 
 # grab date of first occurence
 eventdate_long <- event_date %>%
-  pivot_longer(!Participant.ID, values_drop_na = TRUE) %>%
+  pivot_longer(!c(Participant.ID, Date.of.attending.assessment.centre...Instance.0), values_drop_na = TRUE) %>%
   group_by(Participant.ID) %>%
-  mutate(id = row_number())
+  mutate(id = row_number()) %>%
+  mutate(afterassessment_fo = value > Date.of.attending.assessment.centre...Instance.0,
+         beforeassessment_fo = value < Date.of.attending.assessment.centre...Instance.0)
 ```
 
 
