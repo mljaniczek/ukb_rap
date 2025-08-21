@@ -57,6 +57,29 @@ eventdate_long <- event_date %>%
   mutate(id = row_number()) %>%
   mutate(afterassessment_fo = value > Date.of.attending.assessment.centre...Instance.0,
          beforeassessment_fo = value < Date.of.attending.assessment.centre...Instance.0)
+
+# now grab icd10 codes
+
+event_long <- event_long %>%
+  mutate(name = str_to_lower(name)) %>%
+  mutate(
+    cad = ifelse(str_detect(name, c("i20|i21|i22|i23|i24|i25|z951|z955")),1,0),
+    afib = ifelse(str_detect(name, c("i48")), 1, 0),
+    stroke = ifelse(str_detect(name, c("i60|i61|i629|i63|i64|i678|i690|i693|g951|h341|h342|s066")),1,0),
+    hypertension = ifelse(
+      str_detect(
+        name, c("i10|i11|i12|i13|i15|o10")
+      ), 1,0
+    ),
+    diabetes_other = ifelse(str_detect(
+      name, c("e10|e12|e13|e14") # separated out other diabetes 11/22/23
+    ), 1, 0),
+    diabetes_t2 = ifelse(str_detect(
+      name, c("e11")
+    ), 1, 0)
+  )
 ```
+
+
 
 
