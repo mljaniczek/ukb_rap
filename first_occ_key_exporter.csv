@@ -1,0 +1,43 @@
+"","name","icd","field_mod3","cad","afib","stroke","hypertension","diabetes_other","diabetes_t2","any"
+"1","p130706","date e10 first reported (insulin-dependent diabetes mellitus)","130706",0,0,0,0,1,0,1
+"2","p130707","source of report of e10 (insulin-dependent diabetes mellitus)","130707",0,0,0,0,1,0,1
+"3","p130708","date e11 first reported (non-insulin-dependent diabetes mellitus)","130708",0,0,0,0,0,1,1
+"4","p130709","source of report of e11 (non-insulin-dependent diabetes mellitus)","130709",0,0,0,0,0,1,1
+"5","p130710","date e12 first reported (malnutrition-related diabetes mellitus)","130710",0,0,0,0,1,0,1
+"6","p130711","source of report of e12 (malnutrition-related diabetes mellitus)","130711",0,0,0,0,1,0,1
+"7","p130712","date e13 first reported (other specified diabetes mellitus)","130712",0,0,0,0,1,0,1
+"8","p130713","source of report of e13 (other specified diabetes mellitus)","130713",0,0,0,0,1,0,1
+"9","p130714","date e14 first reported (unspecified diabetes mellitus)","130714",0,0,0,0,1,0,1
+"10","p130715","source of report of e14 (unspecified diabetes mellitus)","130715",0,0,0,0,1,0,1
+"11","p131286","date i10 first reported (essential (primary) hypertension)","131286",0,0,0,1,0,0,1
+"12","p131287","source of report of i10 (essential (primary) hypertension)","131287",0,0,0,1,0,0,1
+"13","p131288","date i11 first reported (hypertensive heart disease)","131288",0,0,0,1,0,0,1
+"14","p131289","source of report of i11 (hypertensive heart disease)","131289",0,0,0,1,0,0,1
+"15","p131290","date i12 first reported (hypertensive renal disease)","131290",0,0,0,1,0,0,1
+"16","p131291","source of report of i12 (hypertensive renal disease)","131291",0,0,0,1,0,0,1
+"17","p131292","date i13 first reported (hypertensive heart and renal disease)","131292",0,0,0,1,0,0,1
+"18","p131293","source of report of i13 (hypertensive heart and renal disease)","131293",0,0,0,1,0,0,1
+"19","p131294","date i15 first reported (secondary hypertension)","131294",0,0,0,1,0,0,1
+"20","p131295","source of report of i15 (secondary hypertension)","131295",0,0,0,1,0,0,1
+"21","p131296","date i20 first reported (angina pectoris)","131296",1,0,0,0,0,0,1
+"22","p131297","source of report of i20 (angina pectoris)","131297",1,0,0,0,0,0,1
+"23","p131298","date i21 first reported (acute myocardial infarction)","131298",1,0,0,0,0,0,1
+"24","p131299","source of report of i21 (acute myocardial infarction)","131299",1,0,0,0,0,0,1
+"25","p131300","date i22 first reported (subsequent myocardial infarction)","131300",1,0,0,0,0,0,1
+"26","p131301","source of report of i22 (subsequent myocardial infarction)","131301",1,0,0,0,0,0,1
+"27","p131302","date i23 first reported (certain current complications following acute myocardial infarction)","131302",1,0,0,0,0,0,1
+"28","p131303","source of report of i23 (certain current complications following acute myocardial infarction)","131303",1,0,0,0,0,0,1
+"29","p131304","date i24 first reported (other acute ischaemic heart diseases)","131304",1,0,0,0,0,0,1
+"30","p131305","source of report of i24 (other acute ischaemic heart diseases)","131305",1,0,0,0,0,0,1
+"31","p131306","date i25 first reported (chronic ischaemic heart disease)","131306",1,0,0,0,0,0,1
+"32","p131307","source of report of i25 (chronic ischaemic heart disease)","131307",1,0,0,0,0,0,1
+"33","p131350","date i48 first reported (atrial fibrillation and flutter)","131350",0,1,0,0,0,0,1
+"34","p131351","source of report of i48 (atrial fibrillation and flutter)","131351",0,1,0,0,0,0,1
+"35","p131360","date i60 first reported (subarachnoid haemorrhage)","131360",0,0,1,0,0,0,1
+"36","p131361","source of report of i60 (subarachnoid haemorrhage)","131361",0,0,1,0,0,0,1
+"37","p131362","date i61 first reported (intracerebral haemorrhage)","131362",0,0,1,0,0,0,1
+"38","p131363","source of report of i61 (intracerebral haemorrhage)","131363",0,0,1,0,0,0,1
+"39","p131366","date i63 first reported (cerebral infarction)","131366",0,0,1,0,0,0,1
+"40","p131367","source of report of i63 (cerebral infarction)","131367",0,0,1,0,0,0,1
+"41","p131368","date i64 first reported (stroke, not specified as haemorrhage or infarction)","131368",0,0,1,0,0,0,1
+"42","p131369","source of report of i64 (stroke, not specified as haemorrhage or infarction)","131369",0,0,1,0,0,0,1

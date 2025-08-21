@@ -68,6 +68,16 @@ field_dx <- read.csv("app81009_20240119215747.dataset.data_dictionary.csv")
 
 library(tidyverse)
 
+foccur <- c(130690:130835, 131270:131423) # endocrine, circulatory disorders
+
+# additional vars to grab
+additional <- c(23658 
+                # the date of metabolite processing for p2 and p1 distinction
+  
+)
+
+  
+
 field_dx <- field_dx %>%
   mutate(field_mod = name) %>%
   mutate(field_mod2 = str_split_i(field_mod, "_", 1), 
@@ -77,11 +87,63 @@ field_dx <- field_dx %>%
 field_dx$instance[is.na(field_dx$instance)] <- 0 
 
 field_dx_select <- field_dx %>%
-  filter(instance == 0) %>%
-  filter(field_mod3 %in% c("eid", field_data_select$field_id)) %>%
+  filter(str_detect(instance, "^0")) %>%
+  filter(field_mod3 %in% 
+           c("eid", as.numeric(char_key$field.showcase)
+             #as.numeric(met_key$field.showcase),
+            #as.numeric(med_key$field.showcase)
+            )) %>%
  filter(entity == "participant")
 
-write.csv(field_dx_select, file = "please_work.csv")
+# scratch why aren't blood pressure being selected
+
+test <- char_key %>%
+  mutate(field.showcase = as.numeric(field.showcase)) %>%
+  filter(!(field.showcase %in% field_dx_select$field_mod3
+           ))
+
+test2 <- field_dx %>%
+  filter(field_mod3 %in% 93)
+
+# first occurrences data 
+field_fo <- field_dx %>%
+  filter(field_mod3 %in% c("eid", foccur))
+
+field_fo2 <- field_fo %>%
+  mutate(icd = str_to_lower(title)) %>%
+  filter(entity == "participant") %>%
+  select(name, icd, field_mod3) %>%
+  mutate(
+    cad = ifelse(str_detect(icd, c("i20|i21|i22|i23|i24|i25|z951|z955")),1,0),
+    afib = ifelse(str_detect(icd, c("i48")), 1, 0),
+    stroke = ifelse(str_detect(icd, c("i60|i61|i629|i63|i64|i678|i690|i693|g951|h341|h342|s066")),1,0),
+    hypertension = ifelse(
+      str_detect(
+        icd, c("i10|i11|i12|i13|i15|o10")
+      ), 1,0
+    ),
+    diabetes_other = ifelse(str_detect(
+      icd, c("e10|e12|e13|e14") # separated out other diabetes 11/22/23
+    ), 1, 0),
+    diabetes_t2 = ifelse(str_detect(
+      icd, c("e11")
+    ), 1, 0),
+    any = cad + afib + stroke + hypertension + diabetes_other + diabetes_t2
+  )
+
+field_fo3 <- field_fo2 %>%
+  filter(any == 1)
+
+write.csv(field_fo3, file = "first_occ_key_exporter.csv")
+
+# testing proteomics for ben 
+# 
+# field_dx_select2 <- field_dx %>%
+#   filter(entity == "olink_instance_0")
+# 
+# write.csv(field_dx_select, file = "please_work.csv")
+# 
+# write.csv(field_dx_select2, file = "please_work_for_ben.csv")
 ```
 
 
@@ -94,6 +156,7 @@ field_data <- read.delim("field.tsv")
 ```{r}
 head(field_data)
 ```
+
 ## Load in the keys for fields used in analysis on Nightengale
 
 ```{r}

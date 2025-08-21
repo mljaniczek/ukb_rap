@@ -1,0 +1,167 @@
+---
+title: "first occurrences process"
+output: pdf_document
+date: "2023-08-08"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+load("/rawdata/UKBB/first_occurences/first_occ_processed.Rdata")
+
+# grab columns of occurrence
+event_key <- first_occ_key %>% filter(str_detect(col.name, "source"))
+eventdate_key <- first_occ_key %>% filter(str_detect(col.name, "date"))
+
+event <- first_occ %>%
+  select(eid, all_of(event_key$col.name))
+
+event_date <- first_occ %>% select(eid, all_of(eventdate_key$col.name))
+
+# go to longer
+event_long <- event %>%
+  pivot_longer(!eid, values_drop_na = TRUE) %>%
+  group_by(eid) %>%
+  mutate(id = row_number())
+
+# grab date of first occurence
+eventdate_long <- event_date %>%
+  pivot_longer(!eid, values_drop_na = TRUE) %>%
+  group_by(eid) %>%
+  mutate(id = row_number())
+
+#load date of attending assessment center first
+load("/rawdata/UKBB/Metabolomics_Apr2023/icd10.Rdata")
+dat_first_event <- first_date %>%
+  right_join(eventdate_long) %>%
+  mutate(afterassessment_fo = value > date_of_attending_assessment_centre_f53_0_0,
+         beforeassessment_fo = value < date_of_attending_assessment_centre_f53_0_0) ## this should give prevalence/occurence before baseline
+
+# filter icd10 codes for various conditions
+
+event_long <- event_long %>%
+  mutate(
+    cad = ifelse(str_detect(name, c("i20|i21|i22|i23|i24|i25|z951|z955")),1,0),
+    afib = ifelse(str_detect(name, c("i48")), 1, 0),
+    stroke = ifelse(str_detect(name, c("i60|i61|i629|i63|i64|i678|i690|i693|g951|h341|h342|s066")),1,0),
+    hypertension = ifelse(
+      str_detect(
+        name, c("i10|i11|i12|i13|i15|o10")
+      ), 1,0
+    ),
+    diabetes_other = ifelse(str_detect(
+      name, c("e10|e11|e13|e14") # separated out other diabetes 11/22/23
+    ), 1, 0),
+    diabetes_t2 = ifelse(str_detect(
+      name, c("e11")
+    ), 1, 0)
+  )
+
+test <- event_long %>%
+  pivot_longer(!(eid:id), names_to = "disease_fo", 
+values_to = "has_disease_fo",
+values_drop_na = FALSE) %>%
+  group_by(eid, disease_fo, has_disease_fo) %>%
+  slice(1) # just grab first instance of disease
+
+test3 <- test %>%
+  select(eid, id, source_of_report = value, disease_fo, has_disease_fo) %>%
+  filter(has_disease_fo == 1) %>%
+  group_by(eid, disease_fo) %>%
+  slice(1)
+
+final_fo <- dat_first_event %>%
+  right_join(test3) #%>%
+  #filter(afterassessment_fo == TRUE) # don't filter this and then you can have both variables before and after assessment
+
+final_fo <- final_fo %>%
+  mutate(disease_source = paste0(disease_fo, source_of_report))
+
+# saving a new version as of Jan 2024 that has variable for before assessment
+save(final_fo, file = "/rawdata/UKBB/Metabolomics_jul2023/first_occ_all_long_010524.Rdata")
+
+library(ggplot2)
+final_fo %>%
+  filter(has_disease_fo == 1) %>%
+  ggplot(aes(disease_fo)) +
+  geom_bar(aes(fill = source_of_report)) +
+  theme_bw() +
+  ylab("Percent") +
+  xlab("Disease")
+
+length(unique(final_fo$eid))
+
+# get set of unique patients that have one of the diseases after baseline
+
+final2_fo <- final_fo %>%
+  select(eid, disease_fo, has_disease_fo) %>%
+  #mutate(source_of_report = as.character(source_of_report)) %>%
+  pivot_wider(names_from = disease_fo, values_from = c(has_disease_fo), values_fill = 0) %>%
+  ungroup() %>%
+  group_by(eid) %>%
+  mutate(id = row_number())
+
+
+#load metab pheno processed data
+
+load("/rawdata/UKBB/Metabolomics_jul2023/dat_subset_metab.Rdata")
+
+dat_sub_metab2 <- dat_sub_metab2 %>%
+  left_join(final2_fo)
+
+dat_sub_metab2$cad_fo[is.na(dat_sub_metab2$cad_fo)] <- 0
+dat_sub_metab2$afib_fo[is.na(dat_sub_metab2$afib_fo)] <- 0
+dat_sub_metab2$stroke_fo[is.na(dat_sub_metab2$stroke_fo)] <- 0
+dat_sub_metab2$hypertension_fo[is.na(dat_sub_metab2$hypertension_fo)] <- 0
+dat_sub_metab2$diabetes_t2_fo[is.na(dat_sub_metab2$diabetes_t2_fo)] <- 0
+dat_sub_metab2$cad[is.na(dat_sub_metab2$cad)] <- 0
+dat_sub_metab2$afib[is.na(dat_sub_metab2$afib)] <- 0
+dat_sub_metab2$stroke[is.na(dat_sub_metab2$stroke)] <- 0
+dat_sub_metab2$hypertension[is.na(dat_sub_metab2$hypertension)] <- 0
+dat_sub_metab2$diabetes_t2[is.na(dat_sub_metab2$diabetes_t2)] <- 0
+dat_sub_metab2$diabetes_other[is.na(dat_sub_metab2$diabetes_other)] <- 0
+
+var_label(dat_sub_metab2) <- outcomedatlist_fo
+var_label(dat_sub_metab2) <- outcomedatlist
+var_label(dat_sub_metab2) <- covardatlist
+
+save(dat_sub_metab2, file = "/rawdata/UKBB/Metabolomics_jul2023/dat_subset_metab_112223.Rdata")
+
+
+```
+
+```{r}
+tab_disease <- dat_sub_metab2 %>%
+  select(sex_f31_0_0, metabolite_status, all_of(names(unlist(outcomedatlist))), all_of(names(unlist(outcomedatlist_fo))))
+
+metab_tab_phase1_sex <- tab_disease %>%
+  filter(metabolite_status == "Phase 1") %>%
+  select(-metabolite_status) %>%
+  tbl_summary(by = sex_f31_0_0, missing = "no") %>%
+  bold_labels() %>%
+  add_n() %>%
+  add_overall()
+
+all_tab_phase1_outcome <- tab_disease %>%
+  select(-metabolite_status) %>%
+  tbl_summary(by = sex_f31_0_0, missing = "no") %>%
+  bold_labels() %>%
+  add_n() %>%
+  add_overall()
+
+
+test <- first_occ_key %>%
+  filter(str_detect(col.name, "i61"))
+```
+
+
+** First occurrences data only had codes for I10 (primary hypertension) and I15 (secondary hypertension). Our original code included I11 (hypertensive heart disease with heart failure), I12 (Hypertensive chronic kidney disease), I13 (hypertensive heart and chronic kidney disease) and O10 (pre-existing hypertension complicating pregnancy). This accounts for the discrepancy between first occurrences and our original ICD10 data.
+
+** First occurrences data for stroke included I60, I61, I63, I64. But it only included broad categories like I62 - not specific conditions like I62.9, I67.8, I69.0.  
+
+** First occurrences for "coronary artery disease" only included I21-25 (not Z951 or Z955)
+
+** Diabetes and Atrial Fibrillation had same codes present in both places. 
+
