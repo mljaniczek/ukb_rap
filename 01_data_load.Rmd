@@ -9,7 +9,22 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-system('dx download data.csv')
+system('dx download pheno.csv')
 system('dx download first_occurrences.csv')
+system('dx download mets.csv')
+
+library(tidyr)
+
+install.packages("readr")
+
+
+library(readr)
+
+
+pheno <- read_csv("pheno.csv", name_repair = "universal_quiet")
+
+mets <- read_csv("mets.csv", name_repair = "universal_quiet")
+
+fo <- read_csv("first_occurrences.csv", name_repair = "universal_quiet")
 ```
 
