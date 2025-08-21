@@ -13,6 +13,8 @@ system('dx download pheno.csv')
 system('dx download first_occurrences.csv')
 system('dx download mets.csv')
 
+load("analysis_variable_keys.Rdata")
+
 library(tidyr)
 
 install.packages("readr")
@@ -25,6 +27,34 @@ pheno <- read_csv("pheno.csv", name_repair = "universal_quiet")
 
 mets <- read_csv("mets.csv", name_repair = "universal_quiet")
 
-fo <- read_csv("first_occurrences.csv", name_repair = "universal_quiet")
+fo <- read_csv("first_occurrences.csv", name_repair = "universal_quiet") 
 ```
+
+```{r}
+# grab columns of occurrence
+library(stringr)
+library(tidyr)
+library(dplyr)
+
+event_key <- colnames(fo)[str_detect(colnames(fo), "Source")]
+eventdate_key <- colnames(fo%>% select(-c(Date.of.attending.assessment.centre...Instance.0, Sample.Measured.Date.and.Time...Instance.0)))[str_detect(colnames(fo%>% select(-c(Date.of.attending.assessment.centre...Instance.0, Sample.Measured.Date.and.Time...Instance.0))), "Date")]
+
+event <- fo %>%
+  select(Participant.ID, all_of(event_key))
+
+event_date <- fo  %>% select(Participant.ID, all_of(eventdate_key))
+
+# go to longer
+event_long <- event %>%
+  pivot_longer(!Participant.ID, values_drop_na = TRUE) %>%
+  group_by(Participant.ID) %>%
+  mutate(id = row_number())
+
+# grab date of first occurence
+eventdate_long <- event_date %>%
+  pivot_longer(!Participant.ID, values_drop_na = TRUE) %>%
+  group_by(Participant.ID) %>%
+  mutate(id = row_number())
+```
+
 
