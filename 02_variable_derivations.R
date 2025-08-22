@@ -107,7 +107,7 @@ dat_metab_sub <- dat %>%
     ),
     SMOKING = case_when(
       (Current.tobacco.smoking...Instance.0 == "No" | is.na(Current.tobacco.smoking...Instance.0)) 
-      & (past_tobacco_smoking_f1249_0_0 %in% c("Smoked on most or all days", "Smoked occasionally")) ~ "Previously smoked", 
+      & (Past.tobacco.smoking...Instance.0 %in% c("Smoked on most or all days", "Smoked occasionally")) ~ "Previously smoked", 
       is.na(Current.tobacco.smoking...Instance.0) ~ "Unknown",
       .default = Current.tobacco.smoking...Instance.0
     )) %>%
@@ -160,6 +160,37 @@ var_label(dat_sub_metab2) <- outcomedatlist_prev
 
 ### CHECK dat_metabsub2 and see if dimensions are right 
 save(dat_metab_sub, file = "processed_pheno.Rdata")
+
+## merge first occurrences data with pheno data
+
+
+### TODO double check need to widen separately prevalent and incident
+final2_fo <- final_fo %>%
+  select(Participant.ID, disease_fo, has_disease_fo) %>%
+  #mutate(source_of_report = as.character(source_of_report)) %>%
+  pivot_wider(names_from = disease_fo, values_from = c(has_disease_fo), values_fill = 0) %>%
+  ungroup() %>%
+  group_by(eid) %>%
+  mutate(id = row_number())
+
+dat_sub_metab2 <- dat_sub_metab2 %>%
+  left_join(final2_fo)
+
+dat_sub_metab2$cad_fo[is.na(dat_sub_metab2$cad_fo)] <- 0
+dat_sub_metab2$afib_fo[is.na(dat_sub_metab2$afib_fo)] <- 0
+dat_sub_metab2$stroke_fo[is.na(dat_sub_metab2$stroke_fo)] <- 0
+dat_sub_metab2$hypertension_fo[is.na(dat_sub_metab2$hypertension_fo)] <- 0
+dat_sub_metab2$diabetes_t2_fo[is.na(dat_sub_metab2$diabetes_t2_fo)] <- 0
+dat_sub_metab2$cad[is.na(dat_sub_metab2$cad)] <- 0
+dat_sub_metab2$afib[is.na(dat_sub_metab2$afib)] <- 0
+dat_sub_metab2$stroke[is.na(dat_sub_metab2$stroke)] <- 0
+dat_sub_metab2$hypertension[is.na(dat_sub_metab2$hypertension)] <- 0
+dat_sub_metab2$diabetes_t2[is.na(dat_sub_metab2$diabetes_t2)] <- 0
+dat_sub_metab2$diabetes_other[is.na(dat_sub_metab2$diabetes_other)] <- 0
+
+var_label(dat_sub_metab2) <- outcomedatlist_fo
+var_label(dat_sub_metab2) <- outcomedatlist
+var_label(dat_sub_metab2) <- covardatlist
 
 tabdat <- dat_metab_sub %>%
   filter(metabolite_status == "Phase 1") %>%
