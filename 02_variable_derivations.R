@@ -9,14 +9,20 @@ library(gtsummary)
 library(ukbtools)
 library(stringr)
 
-load("data_pheno.Rdata")
+source("labellist.R")
 
-load("data_metabolites.Rdata")
+system('dx download pheno.csv') # downloaded phenotype data
+system('dx download mets.csv')
+system("dx download first_occurrences_processed.csv")
+
+pheno <- read_csv("pheno.csv", name_repair = "universal_quiet")
+
+mets <- read_csv("mets.csv", name_repair = "universal_quiet")
 
 load("analysis_variable_keys.Rdata")
 
 
-med_dat <- dat %>%
+med_dat <- pheno %>%
   dplyr::select(eid, all_of(med_key$col.name))
 
 med_dat2 <- med_dat %>%
@@ -42,42 +48,42 @@ dat <- dat %>%
   dplyr::select(-c(all_of(med_key$col.name))) %>%
   left_join(med_dat3)
 
-dat <- dat %>%
-  mutate(SBP = ifelse(!is.na(systolic_blood_pressure_automated_reading_f4080_0_0), 
-                      systolic_blood_pressure_automated_reading_f4080_0_0, 
-                      systolic_blood_pressure_manual_reading_f93_0_0))
+dat <- pheno %>%
+  mutate(SBP = ifelse(!is.na(Systolic.blood.pressure..automated.reading...Instance.0...Array.0), 
+                      Systolic.blood.pressure..automated.reading...Instance.0...Array.0, 
+                      Systolic.blood.pressure..manual.reading...Instance.0...Array.0))
 
 dat <- dat %>%
   #filter(metabolite_status == "Phase 1") %>%
   # make age category
   mutate(age_cat = ifelse(
-    age_when_attended_assessment_centre_f21003_0_0 <50, "<50",
-    ifelse(age_when_attended_assessment_centre_f21003_0_0 >=50 & 
-             age_when_attended_assessment_centre_f21003_0_0 <60, "50-59",
-           ifelse(age_when_attended_assessment_centre_f21003_0_0 >=60, "60+", NA))),
+    Age.when.attended.assessment.centre...Instance.0 <50, "<50",
+    ifelse(Age.when.attended.assessment.centre...Instance.0 >=50 & 
+             Age.when.attended.assessment.centre...Instance.0 <60, "50-59",
+           ifelse(Age.when.attended.assessment.centre...Instance.0 >=60, "60+", NA))),
     menopause_cat = ifelse(
-      age_when_attended_assessment_centre_f21003_0_0 <55 & 
-        had_menopause_f2724_0_0 %in% c("Prefer not to answer", "Not sure - other reason", "Not sure - had a hysterectomy", NA), "Undetermined",
-      ifelse(age_when_attended_assessment_centre_f21003_0_0 >=55 & 
-               had_menopause_f2724_0_0 %in% c("Prefer not to answer", "Not sure - other reason", "Not sure - had a hysterectomy", "Yes", NA), "Yes",
-             ifelse(sex_f31_0_0 == "Male" | had_menopause_f2724_0_0 == "No", "No",
-                    ifelse(had_menopause_f2724_0_0 == "Yes", "Yes",
-                           had_menopause_f2724_0_0)))))
+      Age.when.attended.assessment.centre...Instance.0 <55 & 
+        Had.menopause...Instance.0 %in% c("Prefer not to answer", "Not sure - other reason", "Not sure - had a hysterectomy", NA), "Undetermined",
+      ifelse(Age.when.attended.assessment.centre...Instance.0 >=55 & 
+               Had.menopause...Instance.0 %in% c("Prefer not to answer", "Not sure - other reason", "Not sure - had a hysterectomy", "Yes", NA), "Yes",
+             ifelse(Sex == "Male" | Had.menopause...Instance.0 == "No", "No",
+                    ifelse(Had.menopause...Instance.0 == "Yes", "Yes",
+                           Had.menopause...Instance.0)))))
 
 # now recode race
 
 dat <- dat %>%
   mutate(
     race = ifelse(
-      ethnic_background_f21000_0_0 %in% c("White", "British", "Irish", "Any other white background"), "White",
+      Ethnic.background...Instance.0 %in% c("White", "British", "Irish", "Any other white background"), "White",
       ifelse(
-        ethnic_background_f21000_0_0 %in% c("Black or Black British", "Caribbean", "African", "Any other Black background"), "Black",
-        ifelse(ethnic_background_f21000_0_0 %in% c("Asian or Asian British", "Chinese", "Any other Asian background"), "Asian",
-               ifelse(ethnic_background_f21000_0_0 %in% c("Indian", "Pakistani", "Bangladeshi"), "Southeast Asian",
-                      ifelse(ethnic_background_f21000_0_0 %in% c("Mixed", "White and Black Caribbean", "White and Black African", "White and Asian", "Any other mixed background"), "Mixed",
-                             ifelse((ethnic_background_f21000_0_0 %in% c("Prefer not to answer", "Do not know"))|is.na(ethnic_background_f21000_0_0), "Unknown", 
+        Ethnic.background...Instance.0 %in% c("Black or Black British", "Caribbean", "African", "Any other Black background"), "Black",
+        ifelse(Ethnic.background...Instance.0 %in% c("Asian or Asian British", "Chinese", "Any other Asian background"), "Asian",
+               ifelse(Ethnic.background...Instance.0 %in% c("Indian", "Pakistani", "Bangladeshi"), "Southeast Asian",
+                      ifelse(Ethnic.background...Instance.0 %in% c("Mixed", "White and Black Caribbean", "White and Black African", "White and Asian", "Any other mixed background"), "Mixed",
+                             ifelse((Ethnic.background...Instance.0 %in% c("Prefer not to answer", "Do not know"))|is.na(Ethnic.background...Instance.0), "Unknown", 
                                     ifelse(
-                                      ethnic_background_f21000_0_0 %in% c("Other ethnic group"), "Other", NA)))))
+                                      Ethnic.background...Instance.0 %in% c("Other ethnic group"), "Other", NA)))))
       )
     )
   )
@@ -87,32 +93,23 @@ dat <- dat %>%
                                      "Southeast Asian", "Asian", "Other", "Mixed", "Unknown"))
 
 dat <- dat %>%
-  mutate(bmi = as.numeric(scale(body_mass_index_bmi_f21001_0_0, center = FALSE))) 
+  mutate(bmi = as.numeric(scale(Body.mass.index..BMI....Instance.0, center = FALSE))) 
 
 
 # now pare down any vars we don't need 
 
-
-dat_metab <- dat %>% 
-  filter(has_metabolites_phase2 == TRUE) 
-
-metabs_sub <- metabs %>%
-  filter(eid %in% dat_metab$eid)
-
-
-dat_metab %>%
-  dplyr::select(-eid) %>%
-  tbl_summary(by = metabolite_status)
-
-
-dat_metab_sub <- dat_metab %>%
-  filter(withdraw == FALSE) %>%
+dat_metab_sub <- dat %>%
+  #filter(withdraw == FALSE) %>% 
   mutate(
+    metabolite_status = ifelse(
+      Sample.Measured.Date.and.Time...Instance.0 < "2020-04-16", 
+      "Phase 1", "Phase 2"
+    ),
     SMOKING = case_when(
-      (current_tobacco_smoking_f1239_0_0 == "No" | is.na(current_tobacco_smoking_f1239_0_0)) 
+      (Current.tobacco.smoking...Instance.0 == "No" | is.na(Current.tobacco.smoking...Instance.0)) 
       & (past_tobacco_smoking_f1249_0_0 %in% c("Smoked on most or all days", "Smoked occasionally")) ~ "Previously smoked", 
-      is.na(current_tobacco_smoking_f1239_0_0) ~ "Unknown",
-      .default = current_tobacco_smoking_f1239_0_0
+      is.na(Current.tobacco.smoking...Instance.0) ~ "Unknown",
+      .default = Current.tobacco.smoking...Instance.0
     )) %>%
   group_by(metabolite_status, age_cat) %>%
   mutate(
@@ -142,21 +139,32 @@ dat_metab_sub <- dat_metab %>%
       is.na(cholesterol_f30690_0_0) ~ mean(cholesterol_f30690_0_0, na.rm = TRUE),
       .default = cholesterol_f30690_0_0
     ),
-    menopause_cat = case_when(sex_f31_0_0 == "Male" ~ "No",
+    menopause_cat = case_when(Sex == "Male" ~ "No",
                               .default = menopause_cat)
   ) %>%
   ungroup() %>%
   mutate(
-    age_cat = fct_relevel(as.factor(age_cat), "<50", "50-59", "60+")
-  )
+    age_cat = fct_relevel(as.factor(age_cat), "<50", "50-59", "60+"),
+    age = Age.when.attended.assessment.centre...Instance.0
+  ) 
 
+dat_metab_sub2 <- dat_metab_sub %>%
+  left_join(final_fo %>% select(Participant.ID, prevalent_cad, prevalent_diabetes_t2, 
+                                prevalent_hypertension, incident_cad))
 
+var_label(dat_sub_metab2) <- outcomedatlist_fo
+var_label(dat_sub_metab2) <- outcomedatlist
+var_label(dat_sub_metab2) <- covardatlist
+var_label(dat_sub_metab2) <- outcomedatlist_inc
+var_label(dat_sub_metab2) <- outcomedatlist_prev
+
+### CHECK dat_metabsub2 and see if dimensions are right 
 save(dat_metab_sub, file = "processed_pheno.Rdata")
 
 tabdat <- dat_metab_sub %>%
   filter(metabolite_status == "Phase 1") %>%
-  dplyr::select(c(age_cat, age_when_attended_assessment_centre_f21003_0_0, 
-                  race, sex_f31_0_0, 
+  dplyr::select(c(age_cat, Age.when.attended.assessment.centre...Instance.0, 
+                  race, Sex, 
                    BMI, WHR, SBP, HDL, TC, HBA1C, SMOKING,
                   `Blood pressure medication`:Insulin,
                   prevalent_hypertension, prevalent_cad, prevalent_diabetes_t2)) %>%
@@ -164,15 +172,15 @@ tabdat <- dat_metab_sub %>%
   nest() %>%
   arrange(age_cat) %>%
   mutate(
-    demo_tab = map(data, ~tbl_summary(., by = sex_f31_0_0))
+    demo_tab = map(data, ~tbl_summary(., by = Sex))
   )
 
 tbl_merge(tabdat$demo_tab, tab_spanner = as.character(tabdat$age_cat))
 
 tabdat2 <- dat_metab_sub %>%
   filter(metabolite_status == "Phase 2") %>%
-  dplyr::select(c(age_cat, age_when_attended_assessment_centre_f21003_0_0, 
-                  race, sex_f31_0_0, 
+  dplyr::select(c(age_cat, Age.when.attended.assessment.centre...Instance.0, 
+                  race, Sex, 
                   BMI, WHR, SBP, HDL, TC, HBA1C, SMOKING,
                   `Blood pressure medication`:Insulin,
                   prevalent_hypertension, prevalent_cad, prevalent_diabetes_t2)) %>%
@@ -180,13 +188,8 @@ tabdat2 <- dat_metab_sub %>%
   nest() %>%
   arrange(age_cat) %>%
   mutate(
-    demo_tab = map(data, ~tbl_summary(., by = sex_f31_0_0))
+    demo_tab = map(data, ~tbl_summary(., by = Sex))
   )
   
 tbl_merge(tabdat2$demo_tab, tab_spanner = as.character(tabdat2$age_cat))
 
-var_label(dat_sub_metab2) <- outcomedatlist_fo
-var_label(dat_sub_metab2) <- outcomedatlist
-var_label(dat_sub_metab2) <- covardatlist
-var_label(dat_sub_metab2) <- outcomedatlist_inc
-var_label(dat_sub_metab2) <- outcomedatlist_prev

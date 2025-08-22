@@ -24,7 +24,26 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Start Posit Workbench
 
+Use HIGH PRIORITY (otherwise it will keep quitting and exiting and you lose all your updated code!!!)
+
 ## Clone GitHub repository of files 
+
+In terminal:
+
+git config --global user.name "YOURGITHUBUSERNAME"
+git config --global user.email “YOURGITHUBEMAIL@email.com”
+
+Then in console: 
+
+`credentials::set_github_pat()`
+And then paste in your github PAT token. 
+
+Then back in terminal, clone your github repo with code for your project:
+git clone https://github.com/mljaniczek/ukb_rap 
+
+THEN make sure you open project (upper right corner), otherwise you won't be able to easily push your changes back to github! 
+
+Now you're ready to actually code!!
 
 ## (Optional) Grab list of field names, modify them
 
@@ -54,14 +73,36 @@ head(field_data2)
 
 If we want to be explicit in downloading files, we can utilize `dx download` within `system()` to download our files from the DX Toolkit.
 
-Note that we 
 
 ```{r}
 system("dx download '/Showcase metadata/field.tsv'")
 list.files()
 ```
 
-## Alternative: to get table exporter thing to work??
+## Narrow down list of fields
+
+To avoid downloading all 35K fields you probably want to narrow down your scope. Ahead of time for your analysis, identify which fields you need for your subset of data. 
+
+You may also want to narrow down your cohort if you are not going to analyze all 500K UKB subjects, do that in Cohort Browser, separately. 
+
+Below I have loaded in the fields available in my dataset, then filter down to make a few .txt files specific to the three separate data types that I use in my analysis. 
+
+1. Phenotype data (age, BMI, smoking status, menopausal status etc)
+- make pheno.txt, which should be a ONE COLUMN with the field names you want. Make sure to include the eid as well which will id the subject!! 
+
+e.g. 
+
+eid
+p31
+p48_i0
+p49_i0
+
+2. Metabolite data 
+
+
+3. First Occurrences data
+
+
 
 ```{r}
 field_dx <- read.csv("app81009_20240119215747.dataset.data_dictionary.csv")
@@ -76,7 +117,7 @@ additional <- c(23658
   
 )
 
-  
+
 
 field_dx <- field_dx %>%
   mutate(field_mod = name) %>%
@@ -229,4 +270,13 @@ Be sure to terminate the Posit workbench or it will just keep running (and costi
 
 Be sure to terminate the Posit workbench or it will just keep running (and costing money!!)
 
+
+## Scratch
+
+```{r}
+pheno_text <- field_dx_select %>%
+  mutate(text_column = str_replace_all(title, "[^[:alnum:]]", ".")) %>%
+  left_join(char_key, by = c("field_mod3" = "field.showcase")) %>%
+  select(name, title, text_column, field_mod3, col.name)
+```
 

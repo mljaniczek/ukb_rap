@@ -6,36 +6,42 @@ date: "2025-08-21"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+install.packages("readr")
+install.packages("gtsummary")
+install.packages("glue")
+library(gtsummary)
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(readr)
 ```
 
 ```{r}
-system('dx download pheno.csv')
-system('dx download first_occurrences.csv')
+
+# the following three files were prepared using table exporter and the .txt files
+#"pheno.txt"
+#"mets.txt"
+#"first_occurrences.txt"
+
+system('dx download pheno.csv') # downloaded phenotype data
 system('dx download mets.csv')
-
-load("analysis_variable_keys.Rdata")
-
-library(tidyr)
-
-install.packages("readr")
-
-
-library(readr)
-
+system('dx download first_occurrences.csv') 
 
 pheno <- read_csv("pheno.csv", name_repair = "universal_quiet")
 
 mets <- read_csv("mets.csv", name_repair = "universal_quiet")
 
+# repair names
 fo <- read_csv("first_occurrences.csv", name_repair = "universal_quiet") 
-```
 
-```{r}
+
+
+
+
+
 # grab columns of occurrence
-library(stringr)
-library(tidyr)
-library(dplyr)
-
+# make column keys based on source vs date
 event_key <- colnames(fo)[str_detect(colnames(fo), "Source")]
 eventdate_key <- colnames(fo%>% select(-c( Sample.Measured.Date.and.Time...Instance.0)))[str_detect(colnames(fo%>% select(-c(Sample.Measured.Date.and.Time...Instance.0))), "Date")]
 
@@ -78,6 +84,51 @@ event_long <- event_long %>%
       name, c("e11")
     ), 1, 0)
   )
+
+# now have one var for disease
+test <- event_long %>%
+  pivot_longer(!(Participant.ID:id), names_to = "disease_fo", 
+values_to = "has_disease_fo",
+values_drop_na = FALSE) %>%
+  group_by(Participant.ID, disease_fo, has_disease_fo) %>%
+  slice(1) # just grab first instance of disease
+
+test3 <- test %>%
+  select(Participant.ID, id, source_of_report = value, disease_fo, has_disease_fo) %>%
+  filter(has_disease_fo == 1) %>%
+  group_by(Participant.ID, disease_fo) %>%
+  slice(1)
+
+final_fo <- eventdate_long %>%
+  right_join(test3)
+
+final_fo <- final_fo %>%
+  mutate(
+    prevalent_hypertension = ifelse(hypertension == 1 & beforeassessment_fo == TRUE, 1, 0),
+    prevalent_cad = ifelse(cad == 1 & beforeassessment_fo == TRUE, 1, 0),
+    prevalent_diabetes_t2 = ifelse(diabetes_t2 == 1 & beforeassessment_fo == TRUE, 1, 0),
+    incident_cad = ifelse(cad == 1 & afterassessment_fo == TRUE, 1, 0)
+  )
+
+write.csv(final_fo, file="first_occurrences_processed.csv")
+system("dx upload first_occurrences_processed.csv")
+# 
+# library(ggplot2)
+# final_fo %>%
+#   filter(afterassessment_fo == TRUE) %>%
+#   filter(has_disease_fo == 1) %>%
+#   ggplot(aes(disease_fo)) +
+#   geom_bar(aes(fill = source_of_report)) +
+#   theme_bw() +
+#   ylab("Percent") +
+#   xlab("Disease")
+
+
+final_fo %>%
+  filter(has_disease_fo == 1) %>%
+  ungroup() %>%
+  select(disease_fo, afterassessment_fo) %>%
+  tbl_summary(by = afterassessment_fo)
 ```
 
 
