@@ -86,7 +86,7 @@ dat <- dat %>%
         Had.menopause...Instance.0 %in% c("Prefer not to answer", "Not sure - other reason", "Not sure - had a hysterectomy", NA), "Undetermined",
       ifelse(Age.when.attended.assessment.centre...Instance.0 >=55 & 
                Had.menopause...Instance.0 %in% c("Prefer not to answer", "Not sure - other reason", "Not sure - had a hysterectomy", "Yes", NA), "Yes",
-             ifelse(Sex == "Male" | Had.menopause...Instance.0 == "No", "Male",
+             ifelse(Had.menopause...Instance.0 == "No", "No",
                     ifelse(Had.menopause...Instance.0 == "Yes", "Yes",
                            Had.menopause...Instance.0)))))
 
@@ -95,12 +95,22 @@ dat <- dat %>%
 dat <- dat %>%
   mutate(
     age_cat_meno =case_when(
+      Sex == "Male" ~ "Male",
       #want to exclude post-menopausal women under 50 so make cat for that
       (Age.when.attended.assessment.centre...Instance.0 <50) 
-      & (menopause_cat %in% c("Yes")) ~ "under_50_post_menopause", 
+      & (menopause_cat %in% c("Yes")) ~ "post_meno_under50", 
+      (Age.when.attended.assessment.centre...Instance.0 <50) 
+      & (menopause_cat %in% c("No")) ~ "pre_meno_under50",
       # now make separate category for pre and post menopausal women between 50-60
      (age_cat == "50-59") & (menopause_cat == "Yes") ~ "post_meno_5059",
-      .default = Current.tobacco.smoking...Instance.0
+     (age_cat == "50-59") & (menopause_cat == "No") ~ "pre_meno_5059",
+     (age_cat == "50-59") & 
+       (Age.when.attended.assessment.centre...Instance.0 <55) & 
+       (Had.menopause...Instance.0 %in% c("Prefer not to answer", "Not sure - other reason", "Not sure - had a hysterectomy", NA))
+     ~ "undetermined",
+     (age_cat == "60+") & (menopause_cat == "No") ~ "pre_meno_60p",
+     (age_cat == "60+") & (menopause_cat == "Yes") ~ "post_meno_60p",
+      .default = Had.menopause...Instance.0
     )) 
 
 # now recode race
