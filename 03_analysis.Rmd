@@ -96,6 +96,11 @@ load("analysis_variable_keys.Rdata")
 load("processed_pheno.Rdata")
 ```
 
+```{r}
+#TODO filter out undetermined menopause, post menopausal women under 50, unknown smoking status
+```
+
+
 
 First, we can examine the distribution of incidence of our conditions of interest in the overall cohort compared to those in the PHase 1 cohort, split by Sex. The incidence is calculated using the first occurrences data (denoted with "FO" below).
 

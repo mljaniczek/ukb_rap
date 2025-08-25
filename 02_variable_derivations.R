@@ -2,6 +2,7 @@
 
 # change in ukb
 install.packages("forcats")
+install.packages("gtsummary")
 install.packages("labelled")
 library(dplyr)
 library(tidyr)
@@ -9,6 +10,7 @@ library(forcats)
 library(gtsummary)
 #library(ukbtools)
 library(stringr)
+library(readr)
 
 source("labellist.R")
 
@@ -84,9 +86,22 @@ dat <- dat %>%
         Had.menopause...Instance.0 %in% c("Prefer not to answer", "Not sure - other reason", "Not sure - had a hysterectomy", NA), "Undetermined",
       ifelse(Age.when.attended.assessment.centre...Instance.0 >=55 & 
                Had.menopause...Instance.0 %in% c("Prefer not to answer", "Not sure - other reason", "Not sure - had a hysterectomy", "Yes", NA), "Yes",
-             ifelse(Sex == "Male" | Had.menopause...Instance.0 == "No", "No",
+             ifelse(Sex == "Male" | Had.menopause...Instance.0 == "No", "Male",
                     ifelse(Had.menopause...Instance.0 == "Yes", "Yes",
                            Had.menopause...Instance.0)))))
+
+
+
+dat <- dat %>%
+  mutate(
+    age_cat_meno =case_when(
+      #want to exclude post-menopausal women under 50 so make cat for that
+      (Age.when.attended.assessment.centre...Instance.0 <50) 
+      & (menopause_cat %in% c("Yes")) ~ "under_50_post_menopause", 
+      # now make separate category for pre and post menopausal women between 50-60
+     (age_cat == "50-59") & (menopause_cat == "Yes") ~ "post_meno_5059",
+      .default = Current.tobacco.smoking...Instance.0
+    )) 
 
 # now recode race
 
@@ -161,7 +176,7 @@ dat_metab_sub <- dat %>%
       .default = 	
         Cholesterol...Instance.0
     ),
-    menopause_cat = case_when(Sex == "Male" ~ "No",
+    menopause_cat = case_when(Sex == "Male" ~ "Male",
                               .default = menopause_cat)
   ) %>%
   ungroup() %>%
