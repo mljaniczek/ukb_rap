@@ -12,43 +12,50 @@ library(stringr)
 
 source("labellist.R")
 
-system('dx download pheno.csv') # downloaded phenotype data
+system('dx download pheno2.csv') # downloaded phenotype data
 system('dx download mets.csv')
 system("dx download first_occurrences_processed.csv")
 
-pheno <- read_csv("pheno.csv", name_repair = "universal_quiet")
+pheno <- read_csv("pheno2.csv", name_repair = "universal_quiet")
 
 mets <- read_csv("mets.csv", name_repair = "universal_quiet")
 
-fo <- read_csv("first_occurrences_processed.csv", name_repair = "universal_quiet")
+fo <- read_csv("first_occurrences.csv", name_repair = "universal_quiet") 
+
+final_fo <- read_csv("first_occurrences_processed.csv", name_repair = "universal_quiet")
 
 load("analysis_variable_keys.Rdata")
 
 # TODO get code to download meds
 med_dat <- pheno %>%
-  dplyr::select(eid, all_of(med_key$col.name))
+  dplyr::select(Participant.ID, all_of(starts_with("Medication")))
 
 med_dat2 <- med_dat %>%
-  mutate(instance1 = str_replace( paste0(medication_for_cholesterol_blood_pressure_diabetes_or_take_exogenous_hormones_f6153_0_0, medication_for_cholesterol_blood_pressure_or_diabetes_f6177_0_0), "NA", ""), 
-         instance2 = str_replace( paste0(medication_for_cholesterol_blood_pressure_diabetes_or_take_exogenous_hormones_f6153_0_1, medication_for_cholesterol_blood_pressure_or_diabetes_f6177_0_1), "NA", ""),
-         instance3 = str_replace(paste0(medication_for_cholesterol_blood_pressure_diabetes_or_take_exogenous_hormones_f6153_0_2, medication_for_cholesterol_blood_pressure_or_diabetes_f6177_0_2), "NA", ""),
-         instance4 = paste(medication_for_cholesterol_blood_pressure_diabetes_or_take_exogenous_hormones_f6153_0_3)) %>%
-  dplyr::select(-c(medication_for_cholesterol_blood_pressure_diabetes_or_take_exogenous_hormones_f6153_0_0:medication_for_cholesterol_blood_pressure_or_diabetes_f6177_0_2))
+  mutate(instance1 = str_replace( paste0(Medication.for.cholesterol..blood.pressure..diabetes..or.take.exogenous.hormones...Instance.0, 
+                                         Medication.for.cholesterol..blood.pressure.or.diabetes...Instance.0), "NA", ""), 
+         instance2 = str_replace( paste0(Medication.for.cholesterol..blood.pressure..diabetes..or.take.exogenous.hormones...Instance.1, 
+                                         Medication.for.cholesterol..blood.pressure.or.diabetes...Instance.1), "NA", ""),
+         instance3 = str_replace(paste0(Medication.for.cholesterol..blood.pressure..diabetes..or.take.exogenous.hormones...Instance.2,
+                                        Medication.for.cholesterol..blood.pressure.or.diabetes...Instance.2), "NA", ""),
+         instance4 = str_replace(paste0(Medication.for.cholesterol..blood.pressure..diabetes..or.take.exogenous.hormones...Instance.3,
+                                        Medication.for.cholesterol..blood.pressure.or.diabetes...Instance.3), "NA", "")) %>%
+  dplyr::select(-c(Medication.for.cholesterol..blood.pressure..diabetes..or.take.exogenous.hormones...Instance.0:Medication.for.cholesterol..blood.pressure.or.diabetes...Instance.3))
 
 
 med_dat3 <- med_dat2 %>%
-  pivot_longer(-eid) %>%
+  pivot_longer(-Participant.ID) %>%
   #filter(value != "NA") %>%
   dplyr::select(-name) %>%
   unique() %>%
   mutate(has = 1) %>%
-  pivot_wider(names_from = value, values_from = has, values_fill = 0) %>%
-  dplyr::select(-c("NA", "None of the above", "Do not know", "Prefer not to answer"))
+  pivot_wider(names_from = value, values_from = has, values_fill = 0, names_repair = "universal_quiet") %>%
+  dplyr::select(-c(".NA", "None.of.the.above", "Do.not.know", "Prefer.not.to.answer"))
+  
 
 
 
-dat <- dat %>%
-  dplyr::select(-c(all_of(med_key$col.name))) %>%
+dat <- pheno %>%
+  dplyr::select(-c(all_of(all_of(starts_with("Medication"))))) %>%
   left_join(med_dat3)
 ## END TODO
 
@@ -58,13 +65,12 @@ dat <- dat %>%
 #age when attended assessment variables
 # Ethnic background
 # BMI in data!!?!
-dat <- pheno %>%
+dat <- dat %>%
   mutate(SBP = ifelse(!is.na(Systolic.blood.pressure..automated.reading...Instance.0...Array.0), 
                       Systolic.blood.pressure..automated.reading...Instance.0...Array.0, 
                       Systolic.blood.pressure..manual.reading...Instance.0...Array.0))
 
 
-dat <- pheno
 dat <- dat %>%
   #filter(metabolite_status == "Phase 1") %>%
   # make age category
@@ -112,6 +118,7 @@ dat <- dat %>%
 
 dat_metab_sub <- dat %>%
   #filter(withdraw == FALSE) %>% 
+  left_join(fo %>% select(c(Participant.ID, Sample.Measured.Date.and.Time...Instance.0))) %>%
   mutate(
     metabolite_status = ifelse(
       Sample.Measured.Date.and.Time...Instance.0 < "2020-04-16", 
@@ -185,7 +192,7 @@ final2_fo <- final_fo %>%
   #mutate(source_of_report = as.character(source_of_report)) %>%
   pivot_wider(names_from = disease_fo, values_from = c(has_disease_fo), values_fill = 0) %>%
   ungroup() %>%
-  group_by(eid) %>%
+  group_by(Participant.ID) %>%
   mutate(id = row_number())
 
 dat_sub_metab2 <- dat_sub_metab2 %>%

@@ -24,7 +24,7 @@ library(readr)
 #"mets.txt"
 #"first_occurrences.txt"
 
-system('dx download pheno.csv') # downloaded phenotype data
+system('dx download pheno2.csv') # downloaded phenotype data
 system('dx download mets.csv')
 system('dx download first_occurrences.csv') 
 
@@ -102,7 +102,7 @@ test3 <- test %>%
 final_fo <- eventdate_long %>%
   right_join(test3)
 
-final_fo <- final_fo %>%
+final_fo2 <- final_fo %>%
   mutate(
     prevalent_hypertension = ifelse(hypertension == 1 & beforeassessment_fo == TRUE, 1, 0),
     prevalent_cad = ifelse(cad == 1 & beforeassessment_fo == TRUE, 1, 0),
