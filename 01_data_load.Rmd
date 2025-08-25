@@ -102,15 +102,26 @@ test3 <- test %>%
 final_fo <- eventdate_long %>%
   right_join(test3)
 
-final_fo2 <- final_fo %>%
-  mutate(
-    prevalent_hypertension = ifelse(hypertension == 1 & beforeassessment_fo == TRUE, 1, 0),
-    prevalent_cad = ifelse(cad == 1 & beforeassessment_fo == TRUE, 1, 0),
-    prevalent_diabetes_t2 = ifelse(diabetes_t2 == 1 & beforeassessment_fo == TRUE, 1, 0),
-    incident_cad = ifelse(cad == 1 & afterassessment_fo == TRUE, 1, 0)
-  )
+prev <- final_fo %>%
+  filter(beforeassessment_fo == TRUE) %>%
+  select(Participant.ID, disease_fo, has_disease_fo) %>%
+  pivot_wider(names_from = disease_fo, values_from = has_disease_fo,
+              values_fill = 0, names_prefix = "prevalent_")
 
-write.csv(final_fo, file="first_occurrences_processed.csv")
+inc <- final_fo %>%
+  filter(afterassessment_fo == TRUE) %>%
+  select(Participant.ID, disease_fo, has_disease_fo) %>%
+  pivot_wider(names_from = disease_fo, values_from = has_disease_fo,
+              values_fill = 0, names_prefix = "incident_")
+
+
+final_fo2 <- prev %>%
+  full_join(inc) %>%
+  full_join(fo %>% select(Participant.ID)) %>%
+  replace(is.na(.), 0)
+
+
+write.csv(final_fo2, file="first_occurrences_processed.csv")
 system("dx upload first_occurrences_processed.csv")
 # 
 # library(ggplot2)

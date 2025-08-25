@@ -171,8 +171,9 @@ dat_metab_sub <- dat %>%
   ) 
 
 dat_metab_sub2 <- dat_metab_sub %>%
-  left_join(final_fo %>% select(Participant.ID, prevalent_cad, prevalent_diabetes_t2, 
-                                prevalent_hypertension, incident_cad))
+  left_join(final_fo2 %>% select(Participant.ID, prevalent_cad, prevalent_diabetes_t2, 
+                                prevalent_hypertension, incident_cad, incident_hypertension, 
+                                incident_stroke))
 
 var_label(dat_sub_metab2) <- outcomedatlist_fo
 var_label(dat_sub_metab2) <- outcomedatlist
@@ -181,45 +182,23 @@ var_label(dat_sub_metab2) <- outcomedatlist_inc
 var_label(dat_sub_metab2) <- outcomedatlist_prev
 
 ### CHECK dat_metabsub2 and see if dimensions are right 
-save(dat_metab_sub, file = "processed_pheno.Rdata")
+save(dat_metab_sub2, file = "processed_pheno.Rdata")
 
 ## merge first occurrences data with pheno data
 
 
-### TODO double check need to widen separately prevalent and incident
-final2_fo <- final_fo %>%
-  select(Participant.ID, disease_fo, has_disease_fo) %>%
-  #mutate(source_of_report = as.character(source_of_report)) %>%
-  pivot_wider(names_from = disease_fo, values_from = c(has_disease_fo), values_fill = 0) %>%
-  ungroup() %>%
-  group_by(Participant.ID) %>%
-  mutate(id = row_number())
-
-dat_sub_metab2 <- dat_sub_metab2 %>%
-  left_join(final2_fo)
-
-dat_sub_metab2$cad_fo[is.na(dat_sub_metab2$cad_fo)] <- 0
-dat_sub_metab2$afib_fo[is.na(dat_sub_metab2$afib_fo)] <- 0
-dat_sub_metab2$stroke_fo[is.na(dat_sub_metab2$stroke_fo)] <- 0
-dat_sub_metab2$hypertension_fo[is.na(dat_sub_metab2$hypertension_fo)] <- 0
-dat_sub_metab2$diabetes_t2_fo[is.na(dat_sub_metab2$diabetes_t2_fo)] <- 0
-dat_sub_metab2$cad[is.na(dat_sub_metab2$cad)] <- 0
-dat_sub_metab2$afib[is.na(dat_sub_metab2$afib)] <- 0
-dat_sub_metab2$stroke[is.na(dat_sub_metab2$stroke)] <- 0
-dat_sub_metab2$hypertension[is.na(dat_sub_metab2$hypertension)] <- 0
-dat_sub_metab2$diabetes_t2[is.na(dat_sub_metab2$diabetes_t2)] <- 0
-dat_sub_metab2$diabetes_other[is.na(dat_sub_metab2$diabetes_other)] <- 0
 
 var_label(dat_sub_metab2) <- outcomedatlist_fo
 var_label(dat_sub_metab2) <- outcomedatlist
 var_label(dat_sub_metab2) <- covardatlist
 
-tabdat <- dat_metab_sub %>%
+library(purrr)
+tabdat <- dat_metab_sub2 %>%
   filter(metabolite_status == "Phase 1") %>%
   dplyr::select(c(age_cat, Age.when.attended.assessment.centre...Instance.0, 
                   race, Sex, 
                    BMI, WHR, SBP, HDL, TC, HBA1C, SMOKING,
-                  `Blood pressure medication`:Insulin,
+                  Blood.pressure.medication:Insulin,
                   prevalent_hypertension, prevalent_cad, prevalent_diabetes_t2)) %>%
   group_by(age_cat) %>%
   nest() %>%
