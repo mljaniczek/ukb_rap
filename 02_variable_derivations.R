@@ -1,12 +1,13 @@
 # data variable derivations and labeling
 
 # change in ukb
-
+install.packages("forcats")
+install.packages("labelled")
 library(dplyr)
 library(tidyr)
 library(forcats)
 library(gtsummary)
-library(ukbtools)
+#library(ukbtools)
 library(stringr)
 
 source("labellist.R")
@@ -19,9 +20,11 @@ pheno <- read_csv("pheno.csv", name_repair = "universal_quiet")
 
 mets <- read_csv("mets.csv", name_repair = "universal_quiet")
 
+fo <- read_csv("first_occurrences_processed.csv", name_repair = "universal_quiet")
+
 load("analysis_variable_keys.Rdata")
 
-
+# TODO get code to download meds
 med_dat <- pheno %>%
   dplyr::select(eid, all_of(med_key$col.name))
 
@@ -47,12 +50,21 @@ med_dat3 <- med_dat2 %>%
 dat <- dat %>%
   dplyr::select(-c(all_of(med_key$col.name))) %>%
   left_join(med_dat3)
+## END TODO
 
+
+# TODO get 
+#systoloic blood pressure and 
+#age when attended assessment variables
+# Ethnic background
+# BMI in data!!?!
 dat <- pheno %>%
   mutate(SBP = ifelse(!is.na(Systolic.blood.pressure..automated.reading...Instance.0...Array.0), 
                       Systolic.blood.pressure..automated.reading...Instance.0...Array.0, 
                       Systolic.blood.pressure..manual.reading...Instance.0...Array.0))
 
+
+dat <- pheno
 dat <- dat %>%
   #filter(metabolite_status == "Phase 1") %>%
   # make age category
@@ -122,22 +134,25 @@ dat_metab_sub <- dat %>%
       is.na(SBP) ~ mean(SBP, na.rm = TRUE),
       .default = SBP
     ),
-    whr = waist_circumference_f48_0_0/hip_circumference_f49_0_0,
+    whr = 	 Waist.circumference...Instance.0/Hip.circumference...Instance.0,
     WHR = case_when(
       is.na(whr) ~ mean(whr, na.rm = TRUE),
       .default = whr
     ),
     HDL = case_when(
-      is.na(hdl_cholesterol_f30760_0_0) ~ mean(hdl_cholesterol_f30760_0_0, na.rm = TRUE),
-      .default = hdl_cholesterol_f30760_0_0
+      is.na(HDL.cholesterol...Instance.0) ~ mean(HDL.cholesterol...Instance.0, na.rm = TRUE),
+      .default = HDL.cholesterol...Instance.0
     ),
     HBA1C = case_when(
-      is.na(glycated_haemoglobin_hba1c_f30750_0_0) ~ mean(glycated_haemoglobin_hba1c_f30750_0_0, na.rm = TRUE),
-      .default = glycated_haemoglobin_hba1c_f30750_0_0
+      is.na(Glycated.haemoglobin..HbA1c....Instance.0) ~ mean(Glycated.haemoglobin..HbA1c....Instance.0, na.rm = TRUE),
+      .default = Glycated.haemoglobin..HbA1c....Instance.0
     ),
     TC = case_when(
-      is.na(cholesterol_f30690_0_0) ~ mean(cholesterol_f30690_0_0, na.rm = TRUE),
-      .default = cholesterol_f30690_0_0
+      is.na(	
+        Cholesterol...Instance.0) ~ mean(	
+          Cholesterol...Instance.0, na.rm = TRUE),
+      .default = 	
+        Cholesterol...Instance.0
     ),
     menopause_cat = case_when(Sex == "Male" ~ "No",
                               .default = menopause_cat)
